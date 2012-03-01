@@ -9,10 +9,7 @@ except ImportError:
 from sendgrid import exceptions
 
 
-class Http(object):
-    """
-    Transport to send emails using http
-    """
+class BaseHttp(object):
     def __init__(self, username, password, ssl=True):
         """
         Construct web transport object
@@ -27,44 +24,43 @@ class Http(object):
         self.ssl = ssl
 
 
-    def send(self, message):
+    def get_url(self):
         """
-        Send message
-
-        Args:
-            message: Sendgrid Message object
+        Return Sendgrid API url
 
         Returns:
-            True on success
-
-        Raises:
-            SGServiceException: on error
+            url
         """
         url = "https://sendgrid.com/api/mail.send.json"
         if not self.ssl:
             url = "http://sendgrid.com/api/mail.send.json"
 
+        return url
+
+
+    def get_api_params(self, message):
+        """
+        Return parameters for Sendgrd API
+
+        Args:
+            message: Sendgrid Message object
+
+        Returns:
+            hash of api parameters
+        """
         data = {
-                'api_user': self.username,
-                'api_key': self.password,
-                'to': message.to,
-                'subject': message.subject,
-                'from': message.from_address,
-                'date': message.date,
+            'api_user': self.username,
+            'api_key': self.password,
+            'to': message.to,
+            'subject': message.subject,
+            'from': message.from_address,
+            'date': message.date,
             }
 
         if message.header.data:
             data['x-smtpapi'] = message.header.as_json()
         if message.headers:
             data['headers'] = json.dumps(message.headers)
-        if message.attachments:
-            for attach in message.attachments:
-                try:
-                    f = open(attach['file'], 'rb')
-                    data['files[' + attach['name'] + ']'] = f.read()
-                    f.close()
-                except IOError:
-                    data['files[' + attach['name'] + ']'] = attach['file']
 
         optional_params = {
             'toname': message.to_name,
@@ -78,6 +74,39 @@ class Http(object):
         for key in optional_params:
             if optional_params[key]:
                 data[key] = optional_params[key]
+
+        return data
+
+
+
+class Http(BaseHttp):
+    """
+    Transport to send emails using http
+    """
+    def send(self, message):
+        """
+        Send message
+
+        Args:
+            message: Sendgrid Message object
+
+        Returns:
+            True on success
+
+        Raises:
+            SGServiceException: on error
+        """
+        url = self.get_url()
+        data = self.get_api_params(message)
+
+        if message.attachments:
+            for attach in message.attachments:
+                try:
+                    f = open(attach['file'], 'rb')
+                    data['files[' + attach['name'] + ']'] = f.read()
+                    f.close()
+                except IOError:
+                    data['files[' + attach['name'] + ']'] = attach['file']
 
         data = urllib.urlencode(data, 1)
         req = urllib2.Request(url, data)

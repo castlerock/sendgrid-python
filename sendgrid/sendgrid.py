@@ -46,3 +46,13 @@ class Sendgrid(object):
         """
         from transport import smtp
         return smtp.Smtp(self.username, self.password, self.secure)
+
+
+    @property
+    @memoize
+    def twisted_web(self):
+        """
+        Return twisted web transport
+        """
+        from transport.twisted import web
+        return web.Http(self.username, self.password, self.secure)
