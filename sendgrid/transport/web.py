@@ -71,6 +71,8 @@ class Http(object):
                     f.close()
                 except IOError:
                     data['files[' + attach['name'] + ']'] = attach['file']
+                except TypeError:
+                    data['files[' + attach['name'] + ']'] = attach['file']
 
         optional_params = {
             'toname': message.to_name,
